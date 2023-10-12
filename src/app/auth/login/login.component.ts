@@ -30,7 +30,7 @@ export class LoginComponent implements OnInit {
     initializeForm() {
         this.form = this.formBuilder.group({
             email: ['', [Validators.required, Validators.email]],
-            password: ['', [Validators.required]]
+            password: ['', [Validators.required, Validators.minLength(3)]]
         })
     }
 
@@ -43,6 +43,6 @@ export class LoginComponent implements OnInit {
 
         this.authService.login(user).then(() =>
             this.router.navigate(['home'])
-        ).catch((e) => '')
+        ).catch((e) => this.form.reset())
     }
 }
