@@ -3,139 +3,117 @@ import { Product } from 'src/app/demo/api/product';
 import { MessageService } from 'primeng/api';
 import { Table } from 'primeng/table';
 import { ProductService } from 'src/app/demo/service/product.service';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { BiilsToPayService } from 'src/app/services/biils-to-pay.service';
+import { map } from 'rxjs';
+import { BillToPay } from 'src/app/interfaces/bill-to-pay';
 
 @Component({
     templateUrl: './bills-to-pay.component.html',
     providers: [MessageService]
 })
 export class BillsToPayComponent implements OnInit {
+    public cols: any[] = [];
+    public rowsPerPageOptions = [5, 10, 20];
+    public form!: FormGroup;
+    public items: BillToPay[] = [];
+    public item!: BillToPay;
+    public itemDialog: boolean = false;
+    public deleteItemDialog: boolean = false;
 
-    productDialog: boolean = false;
-
-    deleteProductDialog: boolean = false;
-
-    deleteProductsDialog: boolean = false;
-
-    products: Product[] = [];
-
-    product: Product = {};
-
-    selectedProducts: Product[] = [];
-
-    submitted: boolean = false;
-
-    cols: any[] = [];
-
-    statuses: any[] = [];
-
-    rowsPerPageOptions = [5, 10, 20];
-
-    constructor(private productService: ProductService, private messageService: MessageService) { }
+    constructor(private messageService: MessageService, private formBuilder: FormBuilder, private billsToPayService: BiilsToPayService) { }
 
     ngOnInit() {
-        this.productService.getProducts().then(data => this.products = data);
-
-        this.cols = [
-            { field: 'product', header: 'Product' },
-            { field: 'price', header: 'Price' },
-            { field: 'category', header: 'Category' },
-            { field: 'rating', header: 'Reviews' },
-            { field: 'inventoryStatus', header: 'Status' }
-        ];
-
-        this.statuses = [
-            { label: 'INSTOCK', value: 'instock' },
-            { label: 'LOWSTOCK', value: 'lowstock' },
-            { label: 'OUTOFSTOCK', value: 'outofstock' }
-        ];
+        this.onCreateForm();
+        this.onLoadItems();
     }
 
     openNew() {
-        this.product = {};
-        this.submitted = false;
-        this.productDialog = true;
-    }
-
-    deleteSelectedProducts() {
-        this.deleteProductsDialog = true;
-    }
-
-    editProduct(product: Product) {
-        this.product = { ...product };
-        this.productDialog = true;
-    }
-
-    deleteProduct(product: Product) {
-        this.deleteProductDialog = true;
-        this.product = { ...product };
-    }
-
-    confirmDeleteSelected() {
-        this.deleteProductsDialog = false;
-        this.products = this.products.filter(val => !this.selectedProducts.includes(val));
-        this.messageService.add({ severity: 'success', summary: 'Successful', detail: 'Products Deleted', life: 3000 });
-        this.selectedProducts = [];
-    }
-
-    confirmDelete() {
-        this.deleteProductDialog = false;
-        this.products = this.products.filter(val => val.id !== this.product.id);
-        this.messageService.add({ severity: 'success', summary: 'Successful', detail: 'Product Deleted', life: 3000 });
-        this.product = {};
+        this.itemDialog = true;
+        this.form.reset();
+        delete this.item.id;
     }
 
     hideDialog() {
-        this.productDialog = false;
-        this.submitted = false;
-    }
-
-    saveProduct() {
-        this.submitted = true;
-
-        if (this.product.name?.trim()) {
-            if (this.product.id) {
-                // @ts-ignore
-                this.product.inventoryStatus = this.product.inventoryStatus.value ? this.product.inventoryStatus.value : this.product.inventoryStatus;
-                this.products[this.findIndexById(this.product.id)] = this.product;
-                this.messageService.add({ severity: 'success', summary: 'Successful', detail: 'Product Updated', life: 3000 });
-            } else {
-                this.product.id = this.createId();
-                this.product.code = this.createId();
-                this.product.image = 'product-placeholder.svg';
-                // @ts-ignore
-                this.product.inventoryStatus = this.product.inventoryStatus ? this.product.inventoryStatus.value : 'INSTOCK';
-                this.products.push(this.product);
-                this.messageService.add({ severity: 'success', summary: 'Successful', detail: 'Product Created', life: 3000 });
-            }
-
-            this.products = [...this.products];
-            this.productDialog = false;
-            this.product = {};
-        }
-    }
-
-    findIndexById(id: string): number {
-        let index = -1;
-        for (let i = 0; i < this.products.length; i++) {
-            if (this.products[i].id === id) {
-                index = i;
-                break;
-            }
-        }
-
-        return index;
-    }
-
-    createId(): string {
-        let id = '';
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (let i = 0; i < 5; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
+        this.itemDialog = false;
     }
 
     onGlobalFilter(table: Table, event: Event) {
         table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
+    }
+
+    onCreateForm() {
+        this.form = this.formBuilder.group({
+            name: ['', Validators.required],
+            documentDate: ['', Validators.required],
+            documentNumber: ['', Validators.required],
+            supplierName: ['', Validators.required],
+            amount: ['', Validators.required],
+            installmentQuantity: ['', Validators.required],
+            dueDate: ['', Validators.required]
+        })
+    }
+
+    onLoadItems() {
+        this.billsToPayService.getAll().snapshotChanges().pipe(
+            map(changes =>
+              changes.map(c =>
+                ({ id: c.payload.doc.id, ...c.payload.doc.data() })
+              )
+            )
+          ).subscribe(data => {
+            this.items = data;
+          });
+    }
+
+    onSaveForm() {
+       console.log(this.item);
+       if (!this.item?.id) {
+           return this.createBillPay();
+       }
+
+       return this.updateBillPay(this.item.id);
+    }
+
+    createBillPay() {
+        this.billsToPayService.create(this.form.value).then(() => {
+            this.itemDialog = false;
+            this.form.reset();
+            this.messageService.add({ severity: 'success', summary: 'Sucesso', detail: 'Contas a pagar criada!', life: 3000 });
+        });
+    }
+
+    updateBillPay(id: string) {
+        this.billsToPayService.update(id, this.form.value).then(res => {
+            this.itemDialog = false;
+            this.form.reset();
+            this.messageService.add({ severity: 'success', summary: 'Sucesso', detail: 'Contas a pagar atualizada!', life: 3000 });
+        })
+    }
+
+    deleteBillPay(billPay: BillToPay) {
+        this.deleteItemDialog = true;
+        this.item = billPay;
+    }
+
+    confirmDeleteBillPay() {
+        if (!this.item.id){
+            return;
+        }
+        this.billsToPayService.delete(this.item.id).then(res => {
+            this.messageService.add({ severity: 'success', summary: 'Sucesso', detail: 'Contas a pagar deletada!', life: 3000 });
+
+            this.deleteItemDialog = false;
+        })
+    }
+
+    editBillPay(item: BillToPay) {
+        const id = item.id;
+        this.item = item;
+        delete item.id;
+        this.form.setValue(item);
+
+        this.itemDialog = true;
+        this.item.id = id;
     }
 }
