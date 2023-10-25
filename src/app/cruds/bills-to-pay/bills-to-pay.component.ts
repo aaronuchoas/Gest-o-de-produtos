@@ -29,11 +29,14 @@ export class BillsToPayComponent implements OnInit {
     ) { }
 
     ngOnInit() {
+        this.onCreateForm();
+        this.onLoadItems();
     }
 
     openNew() {
         this.itemDialog = true;
         this.form.reset();
+
     }
 
     hideDialog() {
@@ -69,7 +72,7 @@ export class BillsToPayComponent implements OnInit {
     }
 
     onSaveForm() {
-        if (!this.item.id) {
+        if (!this.item?.id) {
             return this.createBillPay();
         }
 
@@ -80,12 +83,20 @@ export class BillsToPayComponent implements OnInit {
         this.billsToPayService.create(this.form.value).then(() => {
             this.itemDialog = false;
             this.form.reset();
+
+            this.messageService.add({ severity: 'success',
+            summary: 'Sucesso', detail: 'Contas a pagar criada!', life: 3000});
+
         })
     }
 
     updateBillPay(id: string) {
         this.billsToPayService.update(id, this.form.value).then(res => {
             this.itemDialog = false;
+
+            this.messageService.add({ severity: 'success',
+            summary: 'Sucesso', detail: 'Contas a pagar atualizada!', life: 3000});
+
             this.form.reset();
         })
     }
@@ -95,4 +106,25 @@ export class BillsToPayComponent implements OnInit {
         this.item = billPay;
     }
 
+    confirmDeleteBillPay() {
+        if (!this.item.id) {
+            return;
+        }
+        this.billsToPayService.delete(this.item.id).then(res => {
+            this.messageService.add({ severity: 'success',
+            summary: 'Sucesso', detail: 'Contas a pagar deletada!', life: 3000});
+
+            this.deleteItemDialog = false;
+        });
+    }
+
+    editBillPay(item: BillToPay) {
+        const id = item.id;
+        this.item = item;
+        delete item.id;
+        this.form.setValue(item);
+
+        this.itemDialog = true;
+        this.item.id = id;
+    }
 }
