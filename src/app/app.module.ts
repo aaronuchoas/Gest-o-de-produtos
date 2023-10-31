@@ -44,6 +44,7 @@ from '@angular/fire/compat';
     providers: [
         CountryService, CustomerService, EventService, IconService, NodeService,
         PhotoService, ProductService,
+        { provide: FIREBASE_OPTIONS, useValue: environment.firebase }
     ],
     bootstrap: [AppComponent]
 })
