@@ -31,6 +31,17 @@ export class BillsToPayComponent implements OnInit {
     ngOnInit() {
         this.onCreateForm();
         this.onLoadItems();
+        this.onLoadCols();
+    }
+
+    onLoadCols() {
+        this.cols = [
+            { field: 'name', header: 'Nome' },
+            { field: 'documentDate', header: 'Data do Documento' },
+            { field: 'documentNumber', header: 'Numero do Documento' },
+            { field: 'supplierName', header: 'Fornecedor' },
+            { field: 'amount', header: 'Valor' }
+        ];
     }
 
     openNew() {
